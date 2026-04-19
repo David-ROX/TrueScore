@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrueScore — Alternative Credit Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e14;
+    --surface: #111620;
+    --surface2: #161d2a;
+    --border: #1e2a3a;
+    --accent: #00e5b4;
+    --accent2: #ff6b35;
+    --warn: #ffb800;
+    --text: #e8edf5;
+    --text-dim: #6b7a90;
+    --text-mid: #9ba8bc;
+    --good: #00e5b4;
+    --mid: #ffb800;
+    --bad: #ff4d6d;
+    --phantom: #a78bfa;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(0,229,180,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,180,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    padding: 40px 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .logo span {
+    color: var(--text-dim);
+    font-weight: 400;
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(28px, 5vw, 48px);
+    line-height: 1.1;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+
+  h1 em {
+    color: var(--accent);
+    font-style: italic;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    max-width: 520px;
+  }
+
+  /* Step indicator */
+  .steps {
+    display: flex;
+    gap: 0;
+    margin-bottom: 40px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .step {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border-right: 1px solid var(--border);
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .step:last-child { border-right: none; }
+
+  .step.active {
+    background: rgba(0,229,180,0.06);
+    color: var(--accent);
+  }
+
+  .step.complete {
+    color: var(--text-mid);
+  }
+
+  .step-num {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+
+  .step.complete .step-num {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+
+  /* Form panels */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 32px;
+    margin-bottom: 24px;
+    display: none;
+  }
+
+  .panel.active { display: block; }
+
+  .panel-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Form fields */
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 600px) {
+    .field-grid { grid-template-columns: 1fr; }
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .field.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-mid);
+  }
+
+  input[type="number"], select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    padding: 12px 14px;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+  }
+
+  input[type="number"]:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,229,180,0.1);
+  }
+
+  select option { background: var(--surface2); }
+
+  .field-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
+  /* Slider fields */
+  .slider-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0,229,180,0.4);
+  }
+
+  .slider-val {
+    font-size: 18px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 40px;
+    text-align: right;
+  }
+
+  /* Navigation buttons */
+  .nav-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+    justify-content: flex-end;
+  }
+
+  .btn {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 12px 28px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  .btn-primary:hover {
+    background: #00ffcc;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(0,229,180,0.3);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--text-mid);
+    color: var(--text);
+  }
+
+  .btn-calculate {
+    background: linear-gradient(135deg, var(--accent), #00b4ff);
+    color: var(--bg);
+    font-size: 13px;
+    padding: 14px 36px;
+  }
+
+  .btn-calculate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 30px rgba(0,229,180,0.4);
+  }
+
+  /* Results panel */
+  #results {
+    display: none;
+  }
+
+  #results.visible { display: block; }
+
+  /* Score display */
+  .score-hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 40px 32px;
+    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: center;
+  }
+
+  @media (max-width: 600px) {
+    .score-hero { grid-template-columns: 1fr; }
+  }
+
+  .score-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .score-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .score-number {
+    font-family: 'DM Serif Display', serif;
+    font-size: 80px;
+    line-height: 1;
+    transition: color 0.5s;
+  }
+
+  .score-tier {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 2px;
+  }
+
+  .tier-excellent { background: rgba(0,229,180,0.15); color: var(--good); }
+  .tier-good { background: rgba(0,229,180,0.1); color: #7dd4b8; }
+  .tier-fair { background: rgba(255,184,0,0.12); color: var(--mid); }
+  .tier-poor { background: rgba(255,77,109,0.12); color: var(--bad); }
+
+  /* Score gauge */
+  .gauge-wrap {
+    position: relative;
+    width: 180px;
+    height: 90px;
+    margin: 0 auto;
+  }
+
+  .gauge-bg {
+    width: 180px;
+    height: 90px;
+  }
+
+  /* Score right side */
+  .score-right {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .score-compare {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+  }
+
+  .compare-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  .compare-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .compare-row:last-child { margin-bottom: 0; }
+
+  .compare-name {
+    font-size: 12px;
+    color: var(--text-mid);
+  }
+
+  .compare-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .compare-bar-wrap {
+    margin-top: 4px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+  }
+
+  .compare-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s ease;
+  }
+
+  /* Phantom credit alert */
+  .phantom-alert {
+    background: rgba(167,139,250,0.08);
+    border: 1px solid rgba(167,139,250,0.3);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    display: none;
+  }
+
+  .phantom-alert.visible { display: flex; gap: 16px; align-items: flex-start; }
+
+  .phantom-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .phantom-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--phantom);
+    margin-bottom: 6px;
+  }
+
+  .phantom-body {
+    font-size: 13px;
+    color: var(--text-mid);
+    line-height: 1.6;
+  }
+
+  .phantom-gap {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    color: var(--phantom);
+  }
+
+  /* Factor breakdown */
+  .factors-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 600px) {
+    .factors-grid { grid-template-columns: 1fr; }
+  }
+
+  .factor-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+  }
+
+  .factor-name {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .factor-impact {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .factor-points {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .factor-points.positive { color: var(--good); }
+  .factor-points.negative { color: var(--bad); }
+  .factor-points.neutral { color: var(--text-dim); }
+
+  .factor-bar-wrap {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .factor-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1.2s ease;
+  }
+
+  .factor-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+
+  /* Trajectory */
+  .trajectory {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px 32px;
+    margin-bottom: 24px;
+  }
+
+  .traj-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .traj-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .traj-steps {
+    display: flex;
+    gap: 0;
+    position: relative;
+  }
+
+  .traj-steps::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+  }
+
+  .traj-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .traj-dot {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.5s;
+  }
+
+  .traj-dot.current {
+    border-color: var(--accent);
+    background: rgba(0,229,180,0.1);
+    color: var(--accent);
+    box-shadow: 0 0 16px rgba(0,229,180,0.3);
+  }
+
+  .traj-dot.future {
+    color: var(--text-dim);
+  }
+
+  .traj-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+
+  /* Recommendation */
+  .recommendation {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px 32px;
+    margin-bottom: 40px;
+  }
+
+  .rec-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rec-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .rec-decision {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+
+  .rec-limit {
+    font-size: 13px;
+    color: var(--text-mid);
+    margin-bottom: 16px;
+  }
+
+  .rec-limit strong {
+    color: var(--accent);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+  }
+
+  .rec-note {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Reset button */
+  .reset-row {
+    text-align: center;
+    padding-bottom: 60px;
+  }
+
+  .btn-reset {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 10px 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+
+  .btn-reset:hover {
+    border-color: var(--text-mid);
+    color: var(--text);
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .panel.active, #results.visible > * {
+    animation: fadeUp 0.4s ease forwards;
+  }
+
+  @keyframes countUp {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* Disclaimer */
+  .disclaimer {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    padding: 20px 0 40px;
+    border-top: 1px solid var(--border);
+    opacity: 0.6;
+  }
+
+  /* Canvas chart */
+  #factorChart {
+    width: 100%;
+    height: 200px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">TrueScore <span>/ Alternative Credit Intelligence</span></div>
+    <h1>Credit visibility for the<br><em>financially invisible.</em></h1>
+    <p class="subtitle">A scoring framework that evaluates creditworthiness using real financial behavior — not just whether you've had a credit card.</p>
+  </header>
+
+  <!-- Step indicator -->
+  <div class="steps">
+    <div class="step active" id="step1-ind">
+      <div class="step-num">1</div> BNPL History
+    </div>
+    <div class="step" id="step2-ind">
+      <div class="step-num">2</div> Housing & Utilities
+    </div>
+    <div class="step" id="step3-ind">
+      <div class="step-num">3</div> Income Profile
+    </div>
+    <div class="step" id="step4-ind">
+      <div class="step-num">4</div> Results
+    </div>
+  </div>
+
+  <!-- Panel 1: BNPL -->
+  <div class="panel active" id="panel1">
+    <div class="panel-title">Buy Now, Pay Later History</div>
+    <div class="field-grid">
+      <div class="field">
+        <label>Total BNPL Loans Taken</label>
+        <input type="number" id="bnpl_total" min="0" max="100" value="12" />
+        <div class="field-hint">Include all BNPL purchases across any provider</div>
+      </div>
+      <div class="field">
+        <label>Paid On Time</label>
+        <input type="number" id="bnpl_ontime" min="0" max="100" value="11" />
+        <div class="field-hint">Number of loans repaid by due date</div>
+      </div>
+      <div class="field">
+        <label>Missed / Defaulted</label>
+        <input type="number" id="bnpl_missed" min="0" max="100" value="1" />
+        <div class="field-hint">Loans where you missed a payment</div>
+      </div>
+      <div class="field">
+        <label>Avg. Loan Amount ($)</label>
+        <input type="number" id="bnpl_avg" min="0" max="5000" value="180" />
+        <div class="field-hint">Average purchase amount financed via BNPL</div>
+      </div>
+      <div class="field full">
+        <div class="slider-field">
+          <div class="slider-header">
+            <label>Months Using BNPL</label>
+            <div class="slider-val" id="bnpl_months_val">18</div>
+          </div>
+          <input type="range" id="bnpl_months" min="1" max="60" value="18"
+            oninput="document.getElementById('bnpl_months_val').textContent = this.value" />
+          <div class="field-hint">Length of your BNPL history in months</div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn btn-primary" onclick="goTo(2)">Continue →</button>
+    </div>
+  </div>
+
+  <!-- Panel 2: Housing & Utilities -->
+  <div class="panel" id="panel2">
+    <div class="panel-title">Housing & Utility Payments</div>
+    <div class="field-grid">
+      <div class="field">
+        <label>Monthly Rent ($)</label>
+        <input type="number" id="rent_amount" min="0" max="5000" value="1100" />
+      </div>
+      <div class="field">
+        <label>On-Time Rent Payments (last 12 mo)</label>
+        <input type="number" id="rent_ontime" min="0" max="12" value="11" />
+      </div>
+      <div class="field">
+        <label>Utility Bills (Phone, Electric, Internet)</label>
+        <select id="utility_count">
+          <option value="1">1 utility account</option>
+          <option value="2">2 utility accounts</option>
+          <option value="3" selected>3 utility accounts</option>
+          <option value="4">4+ utility accounts</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Utility On-Time Rate</label>
+        <select id="utility_rate">
+          <option value="1.0" selected>Always on time (100%)</option>
+          <option value="0.9">Usually on time (90%)</option>
+          <option value="0.75">Sometimes late (75%)</option>
+          <option value="0.5">Often late (50%)</option>
+        </select>
+      </div>
+      <div class="field full">
+        <div class="slider-field">
+          <div class="slider-header">
+            <label>Months at Current Address</label>
+            <div class="slider-val" id="tenure_val">24</div>
+          </div>
+          <input type="range" id="address_tenure" min="1" max="120" value="24"
+            oninput="document.getElementById('tenure_val').textContent = this.value" />
+          <div class="field-hint">Residential stability is a positive credit signal</div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn btn-secondary" onclick="goTo(1)">← Back</button>
+      <button class="btn btn-primary" onclick="goTo(3)">Continue →</button>
+    </div>
+  </div>
+
+  <!-- Panel 3: Income -->
+  <div class="panel" id="panel3">
+    <div class="panel-title">Income & Cash Flow Profile</div>
+    <div class="field-grid">
+      <div class="field">
+        <label>Monthly Income ($)</label>
+        <input type="number" id="income" min="0" max="20000" value="3200" />
+      </div>
+      <div class="field">
+        <label>Income Type</label>
+        <select id="income_type">
+          <option value="salaried">Salaried / W-2</option>
+          <option value="gig" selected>Gig / Freelance</option>
+          <option value="mixed">Mixed Income</option>
+          <option value="benefits">Government Benefits</option>
+          <option value="informal">Informal / Cash</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Income Consistency</label>
+        <select id="income_consistency">
+          <option value="high">Very consistent (same every month)</option>
+          <option value="medium" selected>Mostly consistent (±20%)</option>
+          <option value="low">Variable (±40% or more)</option>
+          <option value="seasonal">Seasonal</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Overdrafts (last 12 months)</label>
+        <input type="number" id="overdrafts" min="0" max="50" value="2" />
+      </div>
+      <div class="field">
+        <label>Traditional Credit Score (if known)</label>
+        <select id="trad_score">
+          <option value="none" selected>No credit history / unknown</option>
+          <option value="poor">Poor (300–579)</option>
+          <option value="fair">Fair (580–669)</option>
+          <option value="good">Good (670–739)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Months of Banking History</label>
+        <input type="number" id="bank_history" min="0" max="300" value="0" />
+        <div class="field-hint">Enter 0 if unbanked</div>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn btn-secondary" onclick="goTo(2)">← Back</button>
+      <button class="btn btn-calculate" onclick="calculateScore()">Calculate Score →</button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results">
+
+    <div class="score-hero">
+      <div class="score-left">
+        <div class="score-label">TrueScore™</div>
+        <div class="score-number" id="score-display">—</div>
+        <div class="score-tier" id="tier-badge">—</div>
+        <svg class="gauge-bg" viewBox="0 0 180 90">
+          <defs>
+            <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#ff4d6d"/>
+              <stop offset="40%" style="stop-color:#ffb800"/>
+              <stop offset="75%" style="stop-color:#7dd4b8"/>
+              <stop offset="100%" style="stop-color:#00e5b4"/>
+            </linearGradient>
+          </defs>
+          <path d="M 10 88 A 80 80 0 0 1 170 88" fill="none" stroke="#1e2a3a" stroke-width="8" stroke-linecap="round"/>
+          <path id="gauge-arc" d="M 10 88 A 80 80 0 0 1 170 88" fill="none" stroke="url(#gaugeGrad)" stroke-width="8" stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+          <line id="gauge-needle" x1="90" y1="88" x2="90" y2="20" stroke="#00e5b4" stroke-width="2" stroke-linecap="round" transform-origin="90 88"/>
+          <circle cx="90" cy="88" r="5" fill="#00e5b4"/>
+        </svg>
+      </div>
+      <div class="score-right">
+        <div class="score-compare">
+          <div class="compare-title">Score Comparison</div>
+          <div class="compare-row">
+            <div class="compare-name">TrueScore (Alt. Data)</div>
+            <div class="compare-val" id="cmp-true" style="color:var(--good)">—</div>
+          </div>
+          <div class="compare-bar-wrap">
+            <div class="compare-bar" id="bar-true" style="background:var(--good); width:0%"></div>
+          </div>
+          <div style="margin-top:12px"></div>
+          <div class="compare-row">
+            <div class="compare-name">Traditional FICO Equivalent</div>
+            <div class="compare-val" id="cmp-trad" style="color:var(--text-dim)">—</div>
+          </div>
+          <div class="compare-bar-wrap">
+            <div class="compare-bar" id="bar-trad" style="background:var(--text-dim); width:0%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phantom Credit Alert -->
+    <div class="phantom-alert" id="phantom-alert">
+      <div class="phantom-icon">⚠</div>
+      <div>
+        <div class="phantom-title">Phantom Credit Detected</div>
+        <div class="phantom-body" id="phantom-body">—</div>
+      </div>
+    </div>
+
+    <!-- Factor Breakdown -->
+    <div class="panel-title" style="display:flex; align-items:center; gap:8px; margin-bottom:16px; font-family:'Syne',sans-serif; font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--accent);">
+      Score Factors
+      <span style="flex:1; height:1px; background:var(--border); display:block;"></span>
+    </div>
+    <div class="factors-grid" id="factors-grid">
+      <!-- Populated by JS -->
+    </div>
+
+    <!-- Trajectory -->
+    <div class="trajectory">
+      <div class="traj-title">Score Trajectory — If You Maintain Current Behavior</div>
+      <div class="traj-steps" id="traj-steps">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- Recommendation -->
+    <div class="recommendation">
+      <div class="rec-title">BNPL Lending Decision</div>
+      <div class="rec-decision" id="rec-decision">—</div>
+      <div class="rec-limit" id="rec-limit">—</div>
+      <div class="rec-note" id="rec-note">—</div>
+    </div>
+
+    <div class="reset-row">
+      <button class="btn-reset" onclick="resetForm()">← Start Over / New Assessment</button>
+    </div>
+
+  </div>
+
+  <div class="disclaimer">
+    TrueScore is a proof-of-concept demonstration. Scores are computed using a weighted alternative data model and synthetic calibration data. This tool is for academic and research purposes only and does not constitute a real credit assessment.
+  </div>
+
+</div>
+
+<script>
+// ─── Navigation ──────────────────────────────────────────────
+function goTo(step) {
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById('panel' + i).classList.remove('active');
+    const ind = document.getElementById('step' + i + '-ind');
+    ind.classList.remove('active', 'complete');
+    if (i < step) ind.classList.add('complete');
+  }
+  if (step <= 3) {
+    document.getElementById('panel' + step).classList.add('active');
+    document.getElementById('step' + step + '-ind').classList.add('active');
+  }
+
+  const stepDot4 = document.getElementById('step4-ind');
+  if (step === 4) {
+    stepDot4.classList.add('active');
+  } else {
+    stepDot4.classList.remove('active', 'complete');
+  }
+}
+
+// ─── Core Scoring Engine ──────────────────────────────────────
+function calculateScore() {
+  // Gather inputs
+  const bnpl_total    = +document.getElementById('bnpl_total').value || 0;
+  const bnpl_ontime   = +document.getElementById('bnpl_ontime').value || 0;
+  const bnpl_missed   = +document.getElementById('bnpl_missed').value || 0;
+  const bnpl_avg      = +document.getElementById('bnpl_avg').value || 0;
+  const bnpl_months   = +document.getElementById('bnpl_months').value || 1;
+  const rent_amount   = +document.getElementById('rent_amount').value || 0;
+  const rent_ontime   = +document.getElementById('rent_ontime').value || 0;
+  const utility_count = +document.getElementById('utility_count').value || 1;
+  const utility_rate  = +document.getElementById('utility_rate').value || 1;
+  const addr_tenure   = +document.getElementById('address_tenure').value || 1;
+  const income        = +document.getElementById('income').value || 0;
+  const income_type   = document.getElementById('income_type').value;
+  const income_cons   = document.getElementById('income_consistency').value;
+  const overdrafts    = +document.getElementById('overdrafts').value || 0;
+  const trad_score    = document.getElementById('trad_score').value;
+  const bank_history  = +document.getElementById('bank_history').value || 0;
+
+  // ── Factor 1: BNPL Repayment Quality (max 180pts) ──
+  let bnpl_rate = bnpl_total > 0 ? bnpl_ontime / bnpl_total : 0;
+  let bnpl_score = 0;
+  if (bnpl_total === 0) {
+    bnpl_score = 60; // neutral if no history
+  } else {
+    bnpl_score = Math.round(bnpl_rate * 150);
+    // Bonus for volume of clean history
+    if (bnpl_total >= 10 && bnpl_rate >= 0.9) bnpl_score += 20;
+    if (bnpl_total >= 20 && bnpl_rate >= 0.95) bnpl_score += 10;
+  }
+  bnpl_score = Math.min(bnpl_score, 180);
+
+  // ── Factor 2: BNPL History Length (max 60pts) ──
+  let bnpl_len_score = Math.min(Math.round((bnpl_months / 36) * 60), 60);
+
+  // ── Factor 3: Rent Payment History (max 140pts) ──
+  let rent_score = 0;
+  if (rent_amount === 0) {
+    rent_score = 40; // no rent data, neutral
+  } else {
+    rent_score = Math.round((rent_ontime / 12) * 120);
+    if (rent_ontime === 12) rent_score += 20; // perfect year bonus
+  }
+  rent_score = Math.min(rent_score, 140);
+
+  // ── Factor 4: Utility Payment Reliability (max 80pts) ──
+  let util_score = Math.round(utility_rate * utility_count * 20);
+  util_score = Math.min(util_score, 80);
+
+  // ── Factor 5: Residential Stability (max 50pts) ──
+  let stability_score = Math.min(Math.round((addr_tenure / 24) * 40), 50);
+
+  // ── Factor 6: Income Strength (max 100pts) ──
+  let income_score = 0;
+  // Base from income level
+  if (income >= 5000) income_score = 80;
+  else if (income >= 3000) income_score = 65;
+  else if (income >= 2000) income_score = 50;
+  else if (income >= 1000) income_score = 35;
+  else income_score = 20;
+  // Type modifier
+  const type_mod = { salaried: 1.2, mixed: 1.0, gig: 0.95, benefits: 0.9, informal: 0.8 };
+  income_score = Math.round(income_score * (type_mod[income_type] || 1.0));
+  // Consistency modifier
+  const cons_mod = { high: 1.15, medium: 1.0, low: 0.85, seasonal: 0.9 };
+  income_score = Math.round(income_score * (cons_mod[income_cons] || 1.0));
+  income_score = Math.min(income_score, 100);
+
+  // ── Factor 7: Cash Flow Health / Overdraft Penalty (max 60pts) ──
+  let cashflow_score = 60;
+  cashflow_score -= Math.min(overdrafts * 8, 55);
+  cashflow_score = Math.max(cashflow_score, 5);
+
+  // ── Factor 8: Banking History Bonus (max 30pts) ──
+  let banking_score = Math.min(Math.round((bank_history / 60) * 30), 30);
+
+  // ── Deduction: Missed BNPL payments ──
+  let missed_deduction = Math.min(bnpl_missed * 25, 100);
+
+  // ── Raw score assembly ──
+  const max_raw = 180 + 60 + 140 + 80 + 50 + 100 + 60 + 30; // 700
+  const raw = bnpl_score + bnpl_len_score + rent_score + util_score +
+              stability_score + income_score + cashflow_score + banking_score
+              - missed_deduction;
+
+  // ── Normalize to 300–850 FICO-equivalent range ──
+  const normalized = Math.round(300 + Math.max(0, Math.min(raw, max_raw)) / max_raw * 550);
+
+  // ── Traditional equivalent estimate ──
+  let trad_equiv;
+  if (trad_score === 'none') {
+    trad_equiv = bank_history > 12 ? 520 : null; // credit invisible
+  } else if (trad_score === 'poor') {
+    trad_equiv = Math.round(300 + Math.random() * 50 + 230);
+  } else if (trad_score === 'fair') {
+    trad_equiv = Math.round(580 + Math.random() * 50);
+  } else {
+    trad_equiv = Math.round(670 + Math.random() * 50);
+  }
+
+  // ── Phantom credit detection ──
+  const phantom = trad_equiv === null && normalized >= 600;
+  const phantom_gap = trad_equiv !== null ? normalized - trad_equiv : null;
+  const significant_phantom = phantom || (phantom_gap !== null && phantom_gap > 60);
+
+  // ── Tier assignment ──
+  let tier, tier_class;
+  if (normalized >= 740)      { tier = 'Excellent'; tier_class = 'tier-excellent'; }
+  else if (normalized >= 670) { tier = 'Good';      tier_class = 'tier-good'; }
+  else if (normalized >= 580) { tier = 'Fair';      tier_class = 'tier-fair'; }
+  else                        { tier = 'Poor';      tier_class = 'tier-poor'; }
+
+  // ── BNPL lending decision ──
+  let decision, limit, note;
+  if (normalized >= 720) {
+    decision = '✓ Approved';
+    limit = `BNPL credit limit recommended: <strong>up to $${Math.round(income * 0.3).toLocaleString()}/month</strong>`;
+    note = 'This applicant demonstrates strong alternative credit signals. Recommend standard BNPL terms with no additional conditions.';
+  } else if (normalized >= 640) {
+    decision = '✓ Conditionally Approved';
+    limit = `BNPL credit limit recommended: <strong>up to $${Math.round(income * 0.15).toLocaleString()}/month</strong>`;
+    note = 'Approve with moderate limit. Review after 6 months of repayment history. Strong BNPL and rent history offsets limited traditional credit profile.';
+  } else if (normalized >= 580) {
+    decision = '⚠ Approved with Restrictions';
+    limit = `BNPL credit limit recommended: <strong>$${Math.round(income * 0.08).toLocaleString()}/month</strong> with smaller individual transaction caps`;
+    note = 'Marginal profile. Recommend smaller transaction limits and shorter repayment windows initially. Re-evaluate at 3-month intervals.';
+  } else {
+    decision = '✗ Not Approved at This Time';
+    limit = 'Insufficient alternative credit signals to support approval.';
+    note = 'Recommend applicant build 6+ months of consistent BNPL or rent payment history before reapplying. Consider financial counseling referral.';
+  }
+
+  // ─── Render Results ──────────────────────────────────────
+  
+  // Show results
+  document.getElementById('results').classList.add('visible');
+  goTo(4);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Animate score number
+  animateNumber('score-display', normalized, 1200);
+
+  // Score color
+  const scoreEl = document.getElementById('score-display');
+  if (normalized >= 740) scoreEl.style.color = 'var(--good)';
+  else if (normalized >= 670) scoreEl.style.color = '#7dd4b8';
+  else if (normalized >= 580) scoreEl.style.color = 'var(--mid)';
+  else scoreEl.style.color = 'var(--bad)';
+
+  // Tier badge
+  const badge = document.getElementById('tier-badge');
+  badge.textContent = tier;
+  badge.className = 'score-tier ' + tier_class;
+
+  // Gauge animation
+  setTimeout(() => {
+    const pct = (normalized - 300) / 550;
+    const offset = 251.3 * (1 - pct);
+    document.getElementById('gauge-arc').style.strokeDashoffset = offset;
+    const angle = -90 + pct * 180;
+    document.getElementById('gauge-needle').setAttribute('transform',
+      `rotate(${angle}, 90, 88)`);
+  }, 200);
+
+  // Comparison scores
+  document.getElementById('cmp-true').textContent = normalized;
+  const tradDisplay = trad_equiv === null ? 'N/A — Credit Invisible' : trad_equiv;
+  document.getElementById('cmp-trad').textContent = tradDisplay;
+  
+  setTimeout(() => {
+    document.getElementById('bar-true').style.width = ((normalized - 300) / 550 * 100) + '%';
+    if (trad_equiv !== null) {
+      document.getElementById('bar-trad').style.width = ((trad_equiv - 300) / 550 * 100) + '%';
+    }
+  }, 400);
+
+  // Phantom credit alert
+  if (significant_phantom) {
+    const alert = document.getElementById('phantom-alert');
+    alert.classList.add('visible');
+    let msg;
+    if (phantom) {
+      msg = `This applicant has <span class="phantom-gap">no formal credit record</span>, yet demonstrates a TrueScore of <span class="phantom-gap">${normalized}</span> based on consistent BNPL repayment, rent, and utility behavior. Traditional scoring systems would render this person credit invisible — an inaccurate and exclusionary outcome.`;
+    } else {
+      msg = `This applicant's TrueScore of <span class="phantom-gap">${normalized}</span> exceeds their traditional credit equivalent by <span class="phantom-gap">${phantom_gap} points</span>. Responsible financial behavior through BNPL and rental payments is not being captured by conventional credit bureaus — a phantom credit gap that disadvantages this borrower.`;
+    }
+    document.getElementById('phantom-body').innerHTML = msg;
+  }
+
+  // Factor breakdown
+  const factors = [
+    {
+      name: 'BNPL Repayment Quality',
+      points: bnpl_score - 60,
+      max: 120,
+      desc: bnpl_total > 0
+        ? `${bnpl_ontime}/${bnpl_total} payments on time (${Math.round(bnpl_rate*100)}% rate)`
+        : 'No BNPL history on file'
+    },
+    {
+      name: 'BNPL History Length',
+      points: bnpl_len_score,
+      max: 60,
+      desc: `${bnpl_months} months of BNPL activity`
+    },
+    {
+      name: 'Rent Payment History',
+      points: rent_score - 40,
+      max: 100,
+      desc: rent_amount > 0
+        ? `${rent_ontime}/12 on-time rent payments`
+        : 'No rent data provided'
+    },
+    {
+      name: 'Utility Reliability',
+      points: util_score,
+      max: 80,
+      desc: `${utility_count} accounts at ${Math.round(utility_rate*100)}% on-time rate`
+    },
+    {
+      name: 'Residential Stability',
+      points: stability_score,
+      max: 50,
+      desc: `${addr_tenure} months at current address`
+    },
+    {
+      name: 'Income Strength',
+      points: income_score,
+      max: 100,
+      desc: `$${income.toLocaleString()}/mo ${income_type} income, ${income_cons} consistency`
+    },
+    {
+      name: 'Cash Flow Health',
+      points: cashflow_score - 60,
+      max: 60,
+      desc: `${overdrafts} overdraft${overdrafts !== 1 ? 's' : ''} in last 12 months`
+    },
+    {
+      name: 'Missed Payment Penalty',
+      points: -missed_deduction,
+      max: 0,
+      desc: `${bnpl_missed} missed or defaulted BNPL payment${bnpl_missed !== 1 ? 's' : ''}`
+    },
+  ];
+
+  const grid = document.getElementById('factors-grid');
+  grid.innerHTML = '';
+  factors.forEach(f => {
+    const pos = f.points > 0;
+    const neg = f.points < 0;
+    const pctBar = f.max > 0 ? Math.abs(f.points) / f.max * 100 : Math.min(Math.abs(f.points) / 100 * 100, 100);
+    const color = neg ? 'var(--bad)' : pos ? 'var(--good)' : 'var(--text-dim)';
+    const cls = neg ? 'negative' : pos ? 'positive' : 'neutral';
+    const prefix = pos ? '+' : '';
+    
+    grid.innerHTML += `
+      <div class="factor-card">
+        <div class="factor-name">${f.name}</div>
+        <div class="factor-impact">
+          <div class="factor-points ${cls}">${prefix}${f.points}</div>
+          <div style="font-size:10px; color:var(--text-dim)">pts</div>
+        </div>
+        <div class="factor-bar-wrap">
+          <div class="factor-bar" style="background:${color}; width:0%" 
+               data-width="${pctBar}"></div>
+        </div>
+        <div class="factor-desc">${f.desc}</div>
+      </div>
+    `;
+  });
+
+  // Animate factor bars after render
+  setTimeout(() => {
+    document.querySelectorAll('.factor-bar[data-width]').forEach(bar => {
+      bar.style.width = bar.dataset.width + '%';
+    });
+  }, 500);
+
+  // Trajectory
+  const traj = document.getElementById('traj-steps');
+  const future6  = Math.min(normalized + 18, 850);
+  const future12 = Math.min(normalized + 38, 850);
+  const future24 = Math.min(normalized + 65, 850);
+
+  traj.innerHTML = `
+    <div class="traj-step">
+      <div class="traj-dot current">${normalized}</div>
+      <div class="traj-label">Now</div>
+    </div>
+    <div class="traj-step">
+      <div class="traj-dot future">${future6}</div>
+      <div class="traj-label">+6 Months</div>
+    </div>
+    <div class="traj-step">
+      <div class="traj-dot future">${future12}</div>
+      <div class="traj-label">+12 Months</div>
+    </div>
+    <div class="traj-step">
+      <div class="traj-dot future">${future24}</div>
+      <div class="traj-label">+24 Months</div>
+    </div>
+  `;
+
+  // Recommendation
+  const decEl = document.getElementById('rec-decision');
+  decEl.textContent = decision;
+  if (decision.startsWith('✓ Approved') && !decision.includes('Restrict')) {
+    decEl.style.color = 'var(--good)';
+  } else if (decision.startsWith('✓')) {
+    decEl.style.color = 'var(--mid)';
+  } else if (decision.startsWith('⚠')) {
+    decEl.style.color = 'var(--warn)';
+  } else {
+    decEl.style.color = 'var(--bad)';
+  }
+  document.getElementById('rec-limit').innerHTML = limit;
+  document.getElementById('rec-note').textContent = note;
+}
+
+// ─── Utilities ────────────────────────────────────────────────
+function animateNumber(id, target, duration) {
+  const el = document.getElementById(id);
+  const start = Date.now();
+  const startVal = 300;
+  function tick() {
+    const elapsed = Date.now() - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(startVal + (target - startVal) * ease);
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function resetForm() {
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('phantom-alert').classList.remove('visible');
+  document.getElementById('gauge-arc').style.strokeDashoffset = '251.3';
+  document.getElementById('gauge-needle').setAttribute('transform', '');
+  document.getElementById('score-display').textContent = '—';
+  document.getElementById('tier-badge').textContent = '—';
+  document.getElementById('tier-badge').className = 'score-tier';
+  goTo(1);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
